@@ -3,7 +3,7 @@ package controllers
 import (
 	"net/url"
 
-	"portalnesia.com/api/database"
+	"portalnesia.com/api/config"
 	"portalnesia.com/api/models"
 	"portalnesia.com/api/response"
 
@@ -11,13 +11,13 @@ import (
 )
 
 func FindNews(c *fiber.Ctx) error {
-	db := database.DB
+	db := config.DB
 	g := db.Order("id desc")
 	return response.GetPagination[models.NewsPagination](c).PaginationResponse(g).Send(c)
 }
 
 func FindOneNews(c *fiber.Ctx) error {
-	db := database.DB
+	db := config.DB
 	source := c.Params("source", "")
 	title := c.Params("title", "")
 	title, _ = url.QueryUnescape(title)

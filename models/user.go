@@ -3,16 +3,15 @@ package models
 import (
 	"fmt"
 	"net/url"
-	"os"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type User struct {
-	ID       uint    `json:"id" gorm:"primary_key;column:id"`
+	ID       uint64  `json:"id" gorm:"primary_key;column:id"`
 	Name     string  `json:"name" gorm:"column:user_nama"`
 	Username string  `json:"username" gorm:"column:user_login"`
-	Email    string  `json:"email" gorm:"column:user_email"`
+	Email    *string `json:"email" gorm:"column:user_email"`
 	Picture  *string `json:"picture" gorm:"column:gambar"`
 }
 
@@ -24,5 +23,5 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 }
 
 func (User) TableName() string {
-	return fmt.Sprintf("%s_users", os.Getenv("DB_PREFIX"))
+	return "users"
 }

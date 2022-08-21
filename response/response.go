@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type response[T any] struct {
@@ -59,7 +59,7 @@ func (page QueryPagination[T]) PaginationResponse(g *gorm.DB) response[paginatio
 	var data []T
 	var total int64 = 0
 
-	g.Limit(page.PerPage).Offset(page.Start).Find(&data)
+	g.Limit(int(page.PerPage)).Offset(int(page.Start)).Find(&data)
 
 	st := reflect.ValueOf(data[0])
 	table := st.MethodByName("TableName").Call(nil)[0].String()

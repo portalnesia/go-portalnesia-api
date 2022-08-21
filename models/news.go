@@ -3,18 +3,17 @@ package models
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/portalnesia/go-utils"
+	"gorm.io/gorm"
 	util "portalnesia.com/api/utils"
 )
 
 type News struct {
 	Datetime string `json:"-" gorm:"column:datetime"`
 
-	ID        uint      `json:"id" gorm:"primaryKey;column:id"`
+	ID        uint64    `json:"id" gorm:"primaryKey;column:id"`
 	Source    string    `json:"source"`
 	Title     string    `json:"title"`
 	Text      string    `json:"text"`
@@ -71,9 +70,9 @@ func (news *News) AfterFind(tx *gorm.DB) (err error) {
 }
 
 func (News) TableName() string {
-	return fmt.Sprintf("%s_news", os.Getenv("DB_PREFIX"))
+	return "news"
 }
 
 func (NewsPagination) TableName() string {
-	return fmt.Sprintf("%s_news", os.Getenv("DB_PREFIX"))
+	return "news"
 }
