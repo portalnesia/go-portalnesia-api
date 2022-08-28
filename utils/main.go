@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/gofiber/fiber/v2"
 	"github.com/portalnesia/go-utils"
+	"github.com/portalnesia/go-utils/goment"
 	"portalnesia.com/api/config"
 )
 
@@ -213,4 +215,28 @@ func CheckScope(client_scope []string, scope []string) bool {
 		}
 	}
 	return false
+}
+
+type PartialFiberCookie struct {
+	Name    string
+	Value   string
+	Expires goment.PortalnesiaGoment
+}
+
+func SetCookie(c *fiber.Ctx, cookie PartialFiberCookie) {
+	u, _ := utils.ParseUrl(os.Getenv("PORTAL_URL"))
+	var d string
+	if config.IsProduction {
+		d = fmt.Sprintf(".%s", u)
+	} else {
+		d = "localhost"
+	}
+	c.Cookie(&fiber.Cookie{
+		Name:     cookie.Name,
+		Value:    cookie.Value,
+		Expires:  cookie.Expires.ToTime(),
+		Domain:   d,
+		HTTPOnly: false,
+		Secure:   config.IsProduction,
+	})
 }

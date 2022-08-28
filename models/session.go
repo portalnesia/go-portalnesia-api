@@ -126,7 +126,12 @@ var CtxDefaultValue = Context{
 	AlmostExpired:    false,
 }
 
-func (c *Context) ToUserModels(g *gorm.DB, withEmail bool) *User {
+type ContextUserConfig struct {
+	WithEmail bool
+	SessionId *string
+}
+
+func (c *Context) ToUserModels(g *gorm.DB, config ContextUserConfig) *User {
 	if c == nil {
 		return nil
 	} else if c.User == nil {
@@ -138,9 +143,33 @@ func (c *Context) ToUserModels(g *gorm.DB, withEmail bool) *User {
 			Username: c.User.Username,
 			Picture:  c.User.Picture,
 		}
-		if withEmail {
+		if config.WithEmail {
 			user.Email = &c.User.Email
 		}
+
+		user.AfterFind(g)
+		return user
+	}
+}
+func (c *Context) ToUserInternalModels(g *gorm.DB, config ContextUserConfig) *UserInternal {
+	if c == nil {
+		return nil
+	} else if c.User == nil {
+		return nil
+	} else {
+		user := &UserInternal{
+			ID:       c.User.ID,
+			Name:     c.User.Name,
+			Username: c.User.Username,
+			Picture:  c.User.Picture,
+		}
+		if config.WithEmail {
+			user.Email = &c.User.Email
+		}
+		if config.SessionId != nil {
+			user.SessionId = config.SessionId
+		}
+
 		user.AfterFind(g)
 		return user
 	}

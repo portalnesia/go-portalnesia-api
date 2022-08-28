@@ -48,7 +48,9 @@ func SetupRouters() *fiber.App {
 
 	app.Use(middleware.Authorization(middleware.AuthorizationConfig{Disable: true}))
 
-	app.Static("/", os.Getenv("NODEJS_PUBLIC_PATH"))
+	if os.Getenv("NODE_ENV") != "test" {
+		app.Static("/", os.Getenv("NODEJS_PUBLIC_PATH"))
+	}
 
 	/*app.Use(limiter.New(limiter.Config{
 		Max:               900,

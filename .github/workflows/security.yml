@@ -1,4 +1,10 @@
-on: [push, pull_request]
+on: 
+  pull_request:
+    paths:
+      - '**.go'
+  push:
+    branches:
+      - main
 name: Security
 jobs:
   GoSecurity:

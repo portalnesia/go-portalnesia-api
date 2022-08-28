@@ -16,3 +16,4 @@
 *.env
 *_test.txt
 *-credentials.json
+gha-creds-*.json
