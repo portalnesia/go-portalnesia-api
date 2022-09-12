@@ -1,4 +1,4 @@
-package util
+package utils
 
 import (
 	"fmt"
@@ -99,12 +99,12 @@ func TestProfileUrl(t *testing.T) {
 	}
 }
 
-func getToken(key *string, secret *string, date string) TokenBase {
+func getToken(key string, secret string, date string) TokenBase {
 	return TokenBase{
 		Token:    secret,
 		Key:      key,
-		Date:     &date,
-		Datetime: &date,
+		Date:     date,
+		Datetime: date,
 	}
 }
 
@@ -115,14 +115,14 @@ func TestVerifyToken(t *testing.T) {
 	token_date := time.Now().Format(time.RFC3339)
 	token_date_false := time.Now().Add(-time.Minute * 61).Format(time.RFC3339)
 	// Valid All
-	encrypted := CreateToken(getToken(nil, &token_secret, token_date))
+	encrypted := CreateToken(getToken("", token_secret, token_date))
 	verify := VerifyToken[TokenBase](encrypted, token_secret, int64(time.Hour)*1)
 
-	if *verify.Data.Date != token_date {
-		t.Errorf("[VerifyToken1] Invalid token date, Get %s", *verify.Data.Date)
+	if verify.Data.Date != token_date {
+		t.Errorf("[VerifyToken1] Invalid token date, Get %s", verify.Data.Date)
 	}
-	if *verify.Data.Token != token_secret {
-		t.Errorf("[VerifyToken1] Invalid token secret, Get %s", *verify.Data.Token)
+	if verify.Data.Token != token_secret {
+		t.Errorf("[VerifyToken1] Invalid token secret, Get %s", verify.Data.Token)
 	}
 	if !verify.Info.Date {
 		t.Errorf("[VerifyToken1] Token date is not verified")
@@ -131,17 +131,17 @@ func TestVerifyToken(t *testing.T) {
 		t.Errorf("[VerifyToken1] Token key is not verified")
 	}
 	if !verify.Verified {
-		t.Errorf("[VerifyToken1] Token is not verified, Get %s", *verify.Data.Token)
+		t.Errorf("[VerifyToken1] Token is not verified, Get %s", verify.Data.Token)
 	}
 
 	// Invalid Date
-	encrypted = CreateToken(getToken(nil, &token_secret, token_date_false))
+	encrypted = CreateToken(getToken("", token_secret, token_date_false))
 	verify = VerifyToken[TokenBase](encrypted, token_secret, int64(time.Hour)*1)
-	if *verify.Data.Date != token_date_false {
-		t.Errorf("[VerifyToken2] Invalid token date, Get %s", *verify.Data.Date)
+	if verify.Data.Date != token_date_false {
+		t.Errorf("[VerifyToken2] Invalid token date, Get %s", verify.Data.Date)
 	}
-	if *verify.Data.Token != token_secret {
-		t.Errorf("[VerifyToken2] Invalid token secret, Get %s", *verify.Data.Token)
+	if verify.Data.Token != token_secret {
+		t.Errorf("[VerifyToken2] Invalid token secret, Get %s", verify.Data.Token)
 	}
 	if !verify.Info.Token {
 		t.Errorf("[VerifyToken2] Token key is not verified")
@@ -155,13 +155,13 @@ func TestVerifyToken(t *testing.T) {
 
 	// Invalid Key
 	key := "invalid key"
-	encrypted = CreateToken(getToken(nil, &key, token_date))
+	encrypted = CreateToken(getToken("", key, token_date))
 	verify = VerifyToken[TokenBase](encrypted, token_secret, int64(time.Hour)*1)
-	if *verify.Data.Date != token_date {
-		t.Errorf("[VerifyToken3] Invalid token date, Get %s", *verify.Data.Date)
+	if verify.Data.Date != token_date {
+		t.Errorf("[VerifyToken3] Invalid token date, Get %s", verify.Data.Date)
 	}
-	if *verify.Data.Token != key {
-		t.Errorf("[VerifyToken3] Invalid token secret, Get %s", *verify.Data.Token)
+	if verify.Data.Token != key {
+		t.Errorf("[VerifyToken3] Invalid token secret, Get %s", verify.Data.Token)
 	}
 	if verify.Info.Date {
 		t.Errorf("[VerifyToken3] Token date is verified (false)")
@@ -180,30 +180,30 @@ func TestVerifyTokenAuth(t *testing.T) {
 	key := fmt.Sprintf("$2a$08$j9jNyZvS.KFPHIMRAEE4k.ckWmeTMdv17E3QvftgbxEfAO0K94nDm%s", os.Getenv("DEBUG_USERID"))
 
 	// Valid All
-	encrypted := CreateToken(getToken(&key, nil, token_date))
+	encrypted := CreateToken(getToken(key, "", token_date))
 	verify := VerifyTokenAuth(encrypted)
 
-	if *verify.Data.Date != token_date {
-		t.Errorf("[VerifyToken1] Invalid token date, Get %s", *verify.Data.Date)
+	if verify.Data.Date != token_date {
+		t.Errorf("[VerifyToken1] Invalid token date, Get %s", verify.Data.Date)
 	}
-	if *verify.Data.Key != key {
-		t.Errorf("[VerifyToken1] Invalid token secret, Get %s", *verify.Data.Token)
+	if verify.Data.Key != key {
+		t.Errorf("[VerifyToken1] Invalid token secret, Get %s", verify.Data.Token)
 	}
 	if !verify.Info.Date {
 		t.Errorf("[VerifyToken1] Token date is not verified")
 	}
 	if !verify.Verified {
-		t.Errorf("[VerifyToken1] Token is not verified, Get %s", *verify.Data.Token)
+		t.Errorf("[VerifyToken1] Token is not verified, Get %s", verify.Data.Token)
 	}
 
 	// Invalid Date
-	encrypted = CreateToken(getToken(&key, nil, token_date_false))
+	encrypted = CreateToken(getToken(key, "", token_date_false))
 	verify = VerifyTokenAuth(encrypted)
-	if *verify.Data.Date != token_date_false {
-		t.Errorf("[VerifyToken2] Invalid token date, Get %s", *verify.Data.Date)
+	if verify.Data.Date != token_date_false {
+		t.Errorf("[VerifyToken2] Invalid token date, Get %s", verify.Data.Date)
 	}
-	if *verify.Data.Key != key {
-		t.Errorf("[VerifyToken2] Invalid token secret, Get %s", *verify.Data.Token)
+	if verify.Data.Key != key {
+		t.Errorf("[VerifyToken2] Invalid token secret, Get %s", verify.Data.Token)
 	}
 	if verify.Info.Date {
 		t.Errorf("[VerifyToken2] Token date is verified (false)")

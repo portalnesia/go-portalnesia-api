@@ -28,12 +28,12 @@ type AuthWeb struct {
 }
 
 func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
-	tblSess := "session"
-	tblUser := "users"
-	tblAccess := "oauth_access_tokens"
+	tblSess := fmt.Sprintf("%ssession", config.Prefix)
+	tblUser := fmt.Sprintf("%susers", config.Prefix)
+	tblAccess := fmt.Sprintf("%soauth_access_tokens", config.Prefix)
 
 	return func(c *fiber.Ctx) error {
-		ctx := c.Locals("ctx").(*models.Context)
+		ctx, ok := c.Locals("ctx").(*models.Context)
 		xDeviceId := c.Get("x-device-id", "")
 		xSessionId := c.Get("x-session-id", "")
 		xApplicationVersion := c.Get("x-application-version", "")
@@ -46,47 +46,52 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 		portalid := c.Cookies("portalid", "")
 		portalid = strings.ReplaceAll(portalid, "%3A", ":")
 		var client models.Client
-		if xDeviceId != "" && xSessionId != "" && xApplicationVersion != "" && xAppToken != "" {
-			ctx.IsNative = true
-			c.Locals("browserStr", fmt.Sprintf("Portalnesia on Android v%s", xApplicationVersion))
-			ctx.IsDebug = regexp.MustCompile(`\-debug$`).MatchString(xApplicationVersion)
-		} else if pnAuth != "" {
-			ctx.IsWeb = true
-		} else if pnInternalPortalnesia != "" {
-			verify := util.VerifyToken[AuthInternal](pnInternalPortalnesia, os.Getenv("AUTH_PN_INTERNAL_SECRET"), int64(time.Hour)*2)
-			if verify.Verified {
-				if verify.Data != nil && verify.Data.UserId != nil && verify.Data.SessionId != nil {
-					var user models.UserContext
-					sel := fmt.Sprintf("%s.*, %s.sess_id as session_id, %s.sess_time as session_timestamp, %s.id as session_id_number", tblUser, tblSess, tblSess, tblSess)
-					join := fmt.Sprintf("JOIN %s on %s.id = %s.userid", tblSess, tblUser, tblSess)
-					where := fmt.Sprintf("%s.id = ? AND %s.userid = ? AND %s.active = '1' AND %s.remove = '0' AND %s.block = '0' AND %s.suspend = '0'", tblSess, tblSess, tblUser, tblUser, tblUser, tblUser)
 
-					err := config.DB.Table(tblUser).Select(sel).Joins(join).First(&user, where, verify.Data.SessionId, verify.Data.UserId).Error
+		if !ok || ctx == nil {
+			ctx = &models.CtxDefaultValue
+			if xDeviceId != "" && xSessionId != "" && xApplicationVersion != "" && xAppToken != "" {
+				ctx.IsNative = true
+				c.Locals("browserStr", fmt.Sprintf("Portalnesia on Android v%s", xApplicationVersion))
+				ctx.IsDebug = regexp.MustCompile(`\-debug$`).MatchString(xApplicationVersion)
+			} else if pnAuth != "" {
+				ctx.IsWeb = true
+			} else if pnInternalPortalnesia != "" {
+				verify := util.VerifyToken[AuthInternal](pnInternalPortalnesia, os.Getenv("AUTH_PN_INTERNAL_SECRET"), int64(time.Hour)*2)
+				if verify.Verified {
+					if verify.Data.UserId != nil && verify.Data.SessionId != nil {
+						var user models.UserContext
+						sel := fmt.Sprintf("%s.*, %s.sess_id as session_id, %s.sess_time as session_timestamp, %s.id as session_id_number", tblUser, tblSess, tblSess, tblSess)
+						join := fmt.Sprintf("JOIN %s on %s.id = %s.userid", tblSess, tblUser, tblSess)
+						where := fmt.Sprintf("%s.id = ? AND %s.userid = ? AND %s.active = '1' AND %s.remove = '0' AND %s.block = '0' AND %s.suspend = '0'", tblSess, tblSess, tblUser, tblUser, tblUser, tblUser)
 
-					if err == nil {
-						ctx.User = &user
+						err := config.DB.Table(tblUser).Select(sel).Joins(join).First(&user, where, verify.Data.SessionId, verify.Data.UserId).Error
+
+						if err == nil {
+							ctx.User = &user
+						}
+					}
+					ctx.IsInternalServer = true
+				}
+			} else {
+				ctx.IsApi = true
+			}
+			ctx.IsInternal = ctx.IsNative || ctx.IsWeb
+
+			if xAppToken != "" {
+				if _, err := config.FirebaseAppCheck.VerifyToken(xAppToken); err == nil {
+					if client.Internal {
+						ctx.IsInternal = true
 					}
 				}
-				ctx.IsInternalServer = true
 			}
-		} else {
-			ctx.IsApi = true
-		}
-		ctx.IsInternal = ctx.IsNative || ctx.IsWeb
-
-		if xAppToken != "" {
-			if _, err := config.FirebaseAppCheck.VerifyToken(xAppToken); err == nil {
-				if client.Internal {
-					ctx.IsInternal = true
+			if !ctx.IsNative && xDebug != "" {
+				verify := util.VerifyToken[interface{}](xDebug, os.Getenv("AUTH_DEBUG_SECRET"), int64(time.Hour)*1)
+				if verify.Verified {
+					ctx.IsDebug = true
 				}
 			}
 		}
-		if !ctx.IsNative && xDebug != "" {
-			verify := util.VerifyToken[interface{}](xDebug, os.Getenv("AUTH_DEBUG_SECRET"), int64(time.Hour)*1)
-			if verify.Verified {
-				ctx.IsDebug = true
-			}
-		}
+
 		if options.Disable {
 			ctx.Checklist = true
 			c.Locals("ctx", ctx)
@@ -119,6 +124,7 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 
 				// Check Access Token in Database
 				if err := config.DB.First(&token_database, "access_token = ?", token_header).Error; err != nil {
+					fmt.Printf("Err Access Token Database: %s\n\n", err.Error())
 					return response.Authorization(fiber.StatusUnauthorized, response.ErrorAuthorizationInvalidAccessToken)
 				}
 
@@ -173,7 +179,7 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 						return response.Authorization(fiber.StatusUnauthorized, response.ErrorAuthorizationInvalidAccessToken)
 					}
 
-					if client.Publish && user.ID != client.UserId {
+					if !client.Publish && user.ID != client.UserId {
 						if client.TestUserId != nil {
 							if !util.ItemExists(*client.TestUserId, user.ID) {
 								return response.Authorization(fiber.StatusUnauthorized, response.ErrorAuthorizationInvalidClientIdDevelopment)
@@ -235,8 +241,8 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 				ctx.IsDebug = true
 			} else if portalid != "" {
 				verify := util.VerifyTokenAuth(portalid)
-				if verify.Verified && verify.Data.Key != nil {
-					key := *verify.Data.Key
+				if verify.Verified && verify.Data.Key != "" {
+					key := verify.Data.Key
 					auth, userid := key[0:60], key[60:]
 					var user models.UserContext
 					sel := fmt.Sprintf("%s.*, %s.sess_id as session_id, %s.sess_time as session_timestamp, %s.id as session_id_number", tblUser, tblSess, tblSess, tblSess)

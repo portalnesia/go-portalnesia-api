@@ -12,8 +12,8 @@ import (
 
 func FindNews(c *fiber.Ctx) error {
 	db := config.DB
-	g := db.Order("id desc")
-	return response.GetPagination[models.NewsPagination](c).PaginationResponse(g).Send(c)
+	g := db.Order("datetime desc")
+	return response.GetPagination[models.NewsPagination](c).PaginationResponse(g, db.Table(models.NewsPagination{}.TableName())).Send(c)
 }
 
 func FindOneNews(c *fiber.Ctx) error {

@@ -1,4 +1,4 @@
-package util
+package utils
 
 import (
 	"encoding/json"
@@ -61,10 +61,10 @@ func ProfileUrl(path *string) *string {
 }
 
 type TokenBase struct {
-	Token    *string `json:"token"`
-	Date     *string `json:"date"`
-	Datetime *string `json:"datetime"`
-	Key      *string `json:"key"`
+	Token    string `json:"token"`
+	Date     string `json:"date"`
+	Datetime string `json:"datetime"`
+	Key      string `json:"key"`
 }
 type TokenVerifiedInfo struct {
 	Token bool
@@ -72,18 +72,19 @@ type TokenVerifiedInfo struct {
 }
 type TokenResponse[T any] struct {
 	Verified bool
-	Data     *T
-	Date     *time.Time
+	Data     T
+	Date     time.Time
 	Info     TokenVerifiedInfo
 }
 
 func VerifyToken[T any](datatoken string, secret string, second int64) TokenResponse[T] {
 	decryptString, err := config.Crypto.Decrypt(datatoken)
+	var res T
 
 	result := TokenResponse[T]{
 		Verified: false,
-		Data:     nil,
-		Date:     nil,
+		Data:     res,
+		Date:     time.Time{},
 		Info: TokenVerifiedInfo{
 			Token: false,
 			Date:  false,
@@ -94,35 +95,34 @@ func VerifyToken[T any](datatoken string, secret string, second int64) TokenResp
 		return result
 	}
 
-	var res T
 	err = json.Unmarshal([]byte(decryptString), &res)
 	if err != nil {
 		return result
 	}
-	result.Data = &res
+	result.Data = res
 	st := reflect.ValueOf(res)
 	f := st.FieldByName("Token")
-	if f.IsZero() || f.IsNil() {
+	if f.IsZero() {
 		return result
 	}
-	t := f.Interface().(*string)
+	t := f.Interface().(string)
 
-	if *t != secret {
+	if t != secret {
 		return result
 	}
 	result.Info.Token = true
 
 	f = st.FieldByName("Date")
-	if f.IsZero() || f.IsNil() {
+	if f.IsZero() {
 		return result
 	}
-	t = f.Interface().(*string)
+	t = f.Interface().(string)
 
-	d, err := dateparse.ParseAny(*t)
+	d, err := dateparse.ParseAny(t)
 	if err != nil {
 		return result
 	}
-	result.Date = &d
+	result.Date = d
 	tn := d.Add(time.Duration(second)).After(time.Now())
 	if !tn {
 		return result
@@ -137,8 +137,8 @@ func VerifyTokenAuth(datatoken string) TokenResponse[TokenBase] {
 
 	result := TokenResponse[TokenBase]{
 		Verified: false,
-		Data:     nil,
-		Date:     nil,
+		Data:     TokenBase{},
+		Date:     time.Time{},
 		Info: TokenVerifiedInfo{
 			Token: true,
 			Date:  false,
@@ -153,20 +153,20 @@ func VerifyTokenAuth(datatoken string) TokenResponse[TokenBase] {
 	if err != nil {
 		return result
 	}
-	result.Data = &res
+	result.Data = res
 	st := reflect.ValueOf(res)
 
 	f := st.FieldByName("Datetime")
-	if f.IsZero() || f.IsNil() {
+	if f.IsZero() {
 		return result
 	}
-	t := f.Interface().(*string)
+	t := f.Interface().(string)
 
-	d, err := dateparse.ParseAny(*t)
+	d, err := dateparse.ParseAny(t)
 	if err != nil {
 		return result
 	}
-	result.Date = &d
+	result.Date = d
 	tn := d.AddDate(0, 0, 30).After(time.Now())
 	if !tn {
 		return result
@@ -238,5 +238,21 @@ func SetCookie(c *fiber.Ctx, cookie PartialFiberCookie) {
 		Domain:   d,
 		HTTPOnly: false,
 		Secure:   config.IsProduction,
+	})
+}
+
+type DownloadTokenStruct struct {
+	ID     string `json:"id"`
+	Date   string `json:"date"`
+	TypeID string `json:"type_id"`
+}
+
+func DownloadToken(id string, tipe string) string {
+	date, _ := utils.NewGoment()
+
+	return CreateToken(DownloadTokenStruct{
+		ID:     id,
+		Date:   date.PNformat(),
+		TypeID: tipe,
 	})
 }

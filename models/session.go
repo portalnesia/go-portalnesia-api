@@ -1,10 +1,12 @@
 package models
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
+	"portalnesia.com/api/config"
 )
 
 type Session struct {
@@ -15,7 +17,7 @@ type Session struct {
 }
 
 func (Session) TableName() string {
-	return "session"
+	return fmt.Sprintf("%ssession", config.Prefix)
 }
 
 type Client struct {
@@ -46,15 +48,12 @@ func (client *Client) AfterFind(_ *gorm.DB) (err error) {
 	return
 }
 func (Client) TableName() string {
-	return "oauth_clients"
+	return fmt.Sprintf("%soauth_clients", config.Prefix)
 }
 
 type UserContext struct {
-	ID              uint64  `json:"id" gorm:"column:id"`
-	Name            string  `json:"name" gorm:"column:user_nama"`
-	Username        string  `json:"username" gorm:"column:user_login"`
+	User
 	Email           string  `json:"email" gorm:"column:user_email"`
-	Picture         *string `json:"picture" gorm:"column:gambar"`
 	SessionId       *string `json:"-" gorm:"column:sess_id"`
 	SessionIdNumber *uint   `json:"-" gorm:"column:session_id_number"`
 	Timestamp       *string `json:"-" gorm:"column:session_timestamp"`
@@ -62,7 +61,7 @@ type UserContext struct {
 }
 
 func (UserContext) TableName() string {
-	return "users"
+	return fmt.Sprintf("%susers", config.Prefix)
 }
 
 type AccessToken struct {
@@ -76,7 +75,7 @@ type AccessToken struct {
 }
 
 func (AccessToken) TableName() string {
-	return "oauth_access_tokens"
+	return fmt.Sprintf("%soauth_access_tokens", config.Prefix)
 }
 func (token *AccessToken) AfterFind(_ *gorm.DB) (err error) {
 	var gr []string
@@ -138,10 +137,13 @@ func (c *Context) ToUserModels(g *gorm.DB, config ContextUserConfig) *User {
 		return nil
 	} else {
 		user := &User{
-			ID:       c.User.ID,
-			Name:     c.User.Name,
-			Username: c.User.Username,
-			Picture:  c.User.Picture,
+			ID:          c.User.ID,
+			Name:        c.User.Name,
+			Username:    c.User.Username,
+			Picture:     c.User.Picture,
+			Private:     c.User.Private,
+			Paid:        c.User.Paid,
+			PaidExpired: c.User.PaidExpired,
 		}
 		if config.WithEmail {
 			user.Email = &c.User.Email
@@ -157,11 +159,17 @@ func (c *Context) ToUserInternalModels(g *gorm.DB, config ContextUserConfig) *Us
 	} else if c.User == nil {
 		return nil
 	} else {
+		us := User{
+			ID:          c.User.ID,
+			Name:        c.User.Name,
+			Username:    c.User.Username,
+			Picture:     c.User.Picture,
+			Private:     c.User.Private,
+			Paid:        c.User.Paid,
+			PaidExpired: c.User.PaidExpired,
+		}
 		user := &UserInternal{
-			ID:       c.User.ID,
-			Name:     c.User.Name,
-			Username: c.User.Username,
-			Picture:  c.User.Picture,
+			User: us,
 		}
 		if config.WithEmail {
 			user.Email = &c.User.Email
@@ -169,7 +177,6 @@ func (c *Context) ToUserInternalModels(g *gorm.DB, config ContextUserConfig) *Us
 		if config.SessionId != nil {
 			user.SessionId = config.SessionId
 		}
-
 		user.AfterFind(g)
 		return user
 	}

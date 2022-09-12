@@ -21,7 +21,7 @@ func setUpIP(c *fiber.Ctx) {
 	} else {
 		ip = c.IP()
 	}
-	c.Locals("ip", ip)
+	c.Locals("ip", &ip)
 }
 
 func setUpBrowser(c *fiber.Ctx) {
@@ -30,7 +30,7 @@ func setUpBrowser(c *fiber.Ctx) {
 	browserString := fmt.Sprintf("%s, %s %s", browser.OS(), br, ver)
 
 	c.Locals("browser", browser)
-	c.Locals("browserStr", browserString)
+	c.Locals("browserStr", &browserString)
 }
 
 func Header() func(c *fiber.Ctx) error {

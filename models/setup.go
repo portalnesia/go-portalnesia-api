@@ -30,12 +30,16 @@ func SetupDB() {
 	PORT := os.Getenv("DB_PORT")
 	HOST := os.Getenv("DB_HOST")
 	DBNAME := os.Getenv("DB_NAME")
+	level := logger.Error
+	if config.NODE_ENV == "test" {
+		level = logger.Silent
+	}
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
 			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Silent,
+			LogLevel:                  level,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  true,
 		},
@@ -65,12 +69,19 @@ func SetupDebugDB() {
 	PORT := os.Getenv("DB_PORT")
 	HOST := os.Getenv("DB_HOST")
 	DBNAME := os.Getenv("DEBUG_DB_NAME")
+	level := logger.Error
+	if config.NODE_ENV == "test" {
+		level = logger.Silent
+	}
+	//else if config.NODE_ENV == "development" {
+	//	level = logger.Info
+	// }
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
 			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Silent,
+			LogLevel:                  level,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  true,
 		},
@@ -92,9 +103,4 @@ func SetupDebugDB() {
 	//defer config.DBDebug.Close()
 
 	//migrateDB(config.DBDebug)
-}
-
-type Timestamp struct {
-	Format    string `json:"format" gorm:"-"`
-	Timestamp int64  `json:"timestamp" gorm:"-"`
 }

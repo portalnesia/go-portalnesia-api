@@ -1,7 +1,7 @@
 package response
 
 import (
-	"reflect"
+	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,13 +21,23 @@ type paginationResponse[T any] struct {
 	Data      []T   `json:"data"`
 }
 
-func Response[T any](data T) response[T] {
-	return response[T]{
+type privateResponse struct {
+	Private bool `json:"private"`
+}
+
+func PrivateResponse() *response[privateResponse] {
+	return &response[privateResponse]{
+		Data: privateResponse{Private: true},
+	}
+}
+
+func Response[T any](data T) *response[T] {
+	return &response[T]{
 		Data: data,
 	}
 }
 
-func (r response[T]) Send(c *fiber.Ctx) error {
+func (r *response[T]) Send(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(r)
 }
 
@@ -37,7 +47,7 @@ type QueryPagination[T any] struct {
 	PerPage int64
 }
 
-func GetPagination[T any](c *fiber.Ctx) QueryPagination[T] {
+func GetPagination[T any](c *fiber.Ctx) *QueryPagination[T] {
 	page := c.Query("page", "1")
 	perPage := c.Query("per_page", "15")
 	pageInt, _ := strconv.Atoi(page)
@@ -48,36 +58,49 @@ func GetPagination[T any](c *fiber.Ctx) QueryPagination[T] {
 		start = (pageInt * perPageInt) - perPageInt
 	}
 
-	return QueryPagination[T]{
+	return &QueryPagination[T]{
 		Start:   int64(start),
 		Page:    int64(pageInt),
 		PerPage: int64(perPageInt),
 	}
 }
 
-func (page QueryPagination[T]) PaginationResponse(g *gorm.DB) response[paginationResponse[T]] {
+func (page *QueryPagination[T]) PaginationResponse(g *gorm.DB, t *gorm.DB) *response[paginationResponse[T]] {
 	var data []T
 	var total int64 = 0
 
 	g.Limit(int(page.PerPage)).Offset(int(page.Start)).Find(&data)
 
-	st := reflect.ValueOf(data[0])
-	table := st.MethodByName("TableName").Call(nil)[0].String()
+	t.Select("count(*)").Count(&total)
 
-	g.Table(table).Count(&total)
-
-	totalPage := total / page.PerPage
+	totalPage := int64(math.Ceil(float64(total) / float64(page.PerPage)))
 	canLoad := false
-	if page.Page < totalPage {
+	if page.Page < int64(totalPage) {
 		canLoad = true
 	}
 
-	return response[paginationResponse[T]]{
+	return &response[paginationResponse[T]]{
 		Data: paginationResponse[T]{
 			Page:      page.Page,
 			Total:     total,
-			TotalPage: totalPage,
+			TotalPage: int64(totalPage),
 			CanLoad:   canLoad,
+			Data:      data,
+		},
+	}
+}
+
+func PrivatePagination() *response[paginationResponse[string]] {
+	var page int64 = 1
+	var total int64 = 0
+	var total_page int64 = 1
+	data := make([]string, 0)
+	return &response[paginationResponse[string]]{
+		Data: paginationResponse[string]{
+			Page:      page,
+			Total:     total,
+			TotalPage: total_page,
+			CanLoad:   false,
 			Data:      data,
 		},
 	}
