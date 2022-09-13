@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/duo-labs/webauthn/protocol"
-	"github.com/duo-labs/webauthn/webauthn"
+	webauthnn "github.com/duo-labs/webauthn/webauthn"
 	"github.com/gofiber/fiber/v2"
 	"github.com/portalnesia/go-utils/goment"
 	"portalnesia.com/api/models"
 	util "portalnesia.com/api/utils"
 )
 
-var config = webauthn.Config{
+var webauthn_config = webauthnn.Config{
 	RPDisplayName: "Portalnesia",
 	RPID:          "portalnesia.com",
 	RPIcon:        util.StaticUrl("icon/PN-Logo-512.png"),
@@ -24,7 +24,7 @@ var config = webauthn.Config{
 
 type WebauthnUser struct {
 	models.User
-	Credentials []webauthn.Credential
+	Credentials []webauthnn.Credential
 }
 
 func (u *WebauthnUser) WebAuthnID() []byte {
@@ -44,15 +44,15 @@ func (u *WebauthnUser) WebAuthnIcon() string {
 	return util.StaticUrl("icon/PN-Logo-512.png")
 }
 
-func (u *WebauthnUser) WebAuthnCredentials() []webauthn.Credential {
+func (u *WebauthnUser) WebAuthnCredentials() []webauthnn.Credential {
 	return u.Credentials
 }
 
-func newUser(u models.User) webauthn.User {
-	credentials := make([]webauthn.Credential, len(u.Webauthn.WebauthnKeys))
+func newUser(u models.User) webauthnn.User {
+	credentials := make([]webauthnn.Credential, len(u.Webauthn.WebauthnKeys))
 
 	for i, c := range u.Webauthn.WebauthnKeys {
-		credentials[i] = webauthn.Credential{
+		credentials[i] = webauthnn.Credential{
 			ID:        c.ID,
 			PublicKey: []byte(c.PublicKey),
 		}
@@ -78,8 +78,8 @@ type AuthResponse[T any, Y any] struct {
 	Parsed  Y      `json:"-"`
 }
 
-func BeginLogin(u models.User) (*protocol.CredentialAssertion, string, error) {
-	authn, err := webauthn.New(&config)
+func BeginLogin(u models.User) (*protocol.PublicKeyCredentialRequestOptions, string, error) {
+	authn, err := webauthnn.New(&webauthn_config)
 	if err != nil {
 		return nil, "", err
 	}
@@ -92,12 +92,13 @@ func BeginLogin(u models.User) (*protocol.CredentialAssertion, string, error) {
 	}
 
 	date, _ := goment.New()
-	token := util.CreateToken(TokenRequest[protocol.CredentialAssertion]{
-		Request: creds,
+	token := util.CreateToken(TokenRequest[protocol.PublicKeyCredentialRequestOptions]{
+		Request: &creds.Response,
 		Token:   os.Getenv("WEBAUTHN_LOGIN_SECRET"),
 		Date:    date.PNformat(),
 	})
-	return creds, token, nil
+
+	return &creds.Response, token, nil
 }
 
 func ParseLoginRequestBody(c *fiber.Ctx) (*AuthResponse[protocol.CredentialAssertionResponse, protocol.ParsedCredentialAssertionData], error) {
@@ -138,10 +139,10 @@ func ParseLoginRequestBody(c *fiber.Ctx) (*AuthResponse[protocol.CredentialAsser
 	return &resp, nil
 }
 
-func Login(resp *AuthResponse[protocol.CredentialAssertionResponse, protocol.ParsedCredentialAssertionData], u models.User) (*webauthn.Credential, error) {
-	token := util.VerifyToken[TokenRequest[protocol.CredentialAssertion]](resp.Token, os.Getenv("WEBAUTHN_LOGIN_SECRET"), int64(time.Minute)*15)
+func Login(resp *AuthResponse[protocol.CredentialAssertionResponse, protocol.ParsedCredentialAssertionData], u models.User) (*webauthnn.Credential, error) {
+	token := util.VerifyToken[TokenRequest[protocol.PublicKeyCredentialRequestOptions]](resp.Token, os.Getenv("WEBAUTHN_LOGIN_SECRET"), int64(time.Minute)*15)
 
-	authn, err := webauthn.New(&config)
+	authn, err := webauthnn.New(&webauthn_config)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +155,8 @@ func Login(resp *AuthResponse[protocol.CredentialAssertionResponse, protocol.Par
 		allowedCredentials[i] = credential.ID
 	}
 
-	sess := webauthn.SessionData{
-		Challenge:            token.Data.Request.Response.Challenge.String(),
+	sess := webauthnn.SessionData{
+		Challenge:            token.Data.Request.Challenge.String(),
 		UserID:               user.WebAuthnID(),
 		AllowedCredentialIDs: allowedCredentials,
 		UserVerification:     authn.Config.AuthenticatorSelection.UserVerification,
@@ -165,8 +166,8 @@ func Login(resp *AuthResponse[protocol.CredentialAssertionResponse, protocol.Par
 	return authn.ValidateLogin(user, sess, &resp.Parsed)
 }
 
-func BeginRegister(u models.User) (*protocol.CredentialCreation, string, error) {
-	authn, err := webauthn.New(&config)
+func BeginRegister(u models.User) (*protocol.PublicKeyCredentialCreationOptions, string, error) {
+	authn, err := webauthnn.New(&webauthn_config)
 	if err != nil {
 		return nil, "", err
 	}
@@ -179,12 +180,12 @@ func BeginRegister(u models.User) (*protocol.CredentialCreation, string, error) 
 	}
 
 	date, _ := goment.New()
-	token := util.CreateToken(TokenRequest[protocol.CredentialCreation]{
-		Request: creds,
+	token := util.CreateToken(TokenRequest[protocol.PublicKeyCredentialCreationOptions]{
+		Request: &creds.Response,
 		Token:   os.Getenv("WEBAUTHN_REGISTER_SECRET"),
 		Date:    date.PNformat(),
 	})
-	return creds, token, nil
+	return &creds.Response, token, nil
 }
 
 func ParseRegisterRequestBody(c *fiber.Ctx) (*AuthResponse[protocol.CredentialCreationResponse, protocol.ParsedCredentialCreationData], error) {
@@ -227,10 +228,10 @@ func ParseRegisterRequestBody(c *fiber.Ctx) (*AuthResponse[protocol.CredentialCr
 	return &resp, nil
 }
 
-func Register(resp *AuthResponse[protocol.CredentialCreationResponse, protocol.ParsedCredentialCreationData], u models.User) (*webauthn.Credential, error) {
-	token := util.VerifyToken[TokenRequest[protocol.CredentialAssertion]](resp.Token, os.Getenv("WEBAUTHN_REGISTER_SECRET"), int64(time.Minute)*15)
+func Register(resp *AuthResponse[protocol.CredentialCreationResponse, protocol.ParsedCredentialCreationData], u models.User) (*webauthnn.Credential, error) {
+	token := util.VerifyToken[TokenRequest[protocol.PublicKeyCredentialCreationOptions]](resp.Token, os.Getenv("WEBAUTHN_REGISTER_SECRET"), int64(time.Minute)*15)
 
-	authn, err := webauthn.New(&config)
+	authn, err := webauthnn.New(&webauthn_config)
 	if err != nil {
 		return nil, err
 	}
@@ -243,8 +244,8 @@ func Register(resp *AuthResponse[protocol.CredentialCreationResponse, protocol.P
 		allowedCredentials[i] = credential.ID
 	}
 
-	sess := webauthn.SessionData{
-		Challenge:            token.Data.Request.Response.Challenge.String(),
+	sess := webauthnn.SessionData{
+		Challenge:            token.Data.Request.Challenge.String(),
 		UserID:               user.WebAuthnID(),
 		AllowedCredentialIDs: allowedCredentials,
 		UserVerification:     authn.Config.AuthenticatorSelection.UserVerification,

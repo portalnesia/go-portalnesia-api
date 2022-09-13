@@ -113,6 +113,7 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gorm.io/datatypes v1.0.7 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 

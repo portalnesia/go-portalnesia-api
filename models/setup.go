@@ -33,6 +33,8 @@ func SetupDB() {
 	level := logger.Error
 	if config.NODE_ENV == "test" {
 		level = logger.Silent
+	} else if config.NODE_ENV == "development" {
+		level = logger.Info
 	}
 
 	newLogger := logger.New(

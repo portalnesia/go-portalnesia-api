@@ -9,9 +9,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"portalnesia.com/api/config"
-	"portalnesia.com/api/models"
-	"portalnesia.com/api/routes"
+	"portalnesia.com/api/app"
 	util "portalnesia.com/api/utils"
 
 	"github.com/cloudflare/tableflip"
@@ -25,14 +23,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
-	config.SetupConfig()
-	config.SetupFirebase()
-	models.SetupDB()
-	if os.Getenv("NODE_ENV") == "production" {
-		models.SetupDebugDB()
-	}
+	app.Initialization()
 
-	r := routes.SetupRouters()
+	r := app.NewApp()
 
 	if runtime.GOOS == "windows" {
 		debug()

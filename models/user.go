@@ -1,11 +1,13 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"sync"
 	"time"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"portalnesia.com/api/config"
 )
@@ -30,18 +32,19 @@ type UserWebauthn struct {
 }
 
 type User struct {
-	ID           uint64       `json:"id" gorm:"primaryKey;column:id"`
-	Name         string       `json:"name" gorm:"column:user_nama"`
-	Username     string       `json:"username" gorm:"column:user_login"`
-	Email        *string      `json:"email" gorm:"column:user_email"`
-	Gambar       *string      `json:"-" gorm:"column:gambar"`
-	Picture      *string      `json:"picture" gorm:"-"`
-	Private      bool         `json:"private" gorm:"column:private"`
-	MediaPrivate bool         `json:"media_private" gorm:"column:media_private"`
-	Verify       bool         `json:"verify" gorm:"column:verify"`
-	Paid         bool         `json:"-" gorm:"column:paid"`
-	PaidExpired  string       `json:"-" gorm:"column:paid_expired"`
-	Webauthn     UserWebauthn `json:"-" gorm:"column:security_key"`
+	ID            uint64         `json:"id" gorm:"column:id;primaryKey;column:id"`
+	Name          string         `json:"name" gorm:"column:user_nama"`
+	Username      string         `json:"username" gorm:"column:user_login"`
+	Email         *string        `json:"email" gorm:"column:user_email"`
+	Gambar        *string        `json:"-" gorm:"column:gambar"`
+	Picture       *string        `json:"picture" gorm:"-"`
+	Private       bool           `json:"private" gorm:"column:private"`
+	MediaPrivate  bool           `json:"media_private" gorm:"column:media_private"`
+	Verify        bool           `json:"verify" gorm:"column:verify"`
+	Paid          bool           `json:"-" gorm:"column:paid"`
+	PaidExpired   string         `json:"-" gorm:"column:paid_expired"`
+	Webauthn_JSON datatypes.JSON `json:"-" gorm:"column:security_key"`
+	Webauthn      UserWebauthn   `json:"-" gorm:"-"`
 }
 
 func (user *User) AfterFind(tx *gorm.DB) (err error) {
@@ -49,6 +52,7 @@ func (user *User) AfterFind(tx *gorm.DB) (err error) {
 		pic := fmt.Sprintf("https://content.portalnesia.com/img/content?image=%s", url.QueryEscape(*user.Gambar))
 		user.Picture = &pic
 	}
+	json.Unmarshal([]byte(user.Webauthn_JSON.String()), &user.Webauthn)
 	return
 }
 

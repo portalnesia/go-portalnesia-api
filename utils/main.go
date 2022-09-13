@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -255,4 +256,11 @@ func DownloadToken(id string, tipe string) string {
 		Date:   date.PNformat(),
 		TypeID: tipe,
 	})
+}
+
+func ByteToRaw(b []byte) json.RawMessage {
+	byteStr := fmt.Sprintf("%+v", b)
+	byteStr = regexp.MustCompile(` `).ReplaceAllString(byteStr, ",")
+
+	return json.RawMessage(byteStr)
 }

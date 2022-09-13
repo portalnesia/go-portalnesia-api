@@ -1,12 +1,14 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/portalnesia/go-utils"
 	"portalnesia.com/api/config"
 )
 
@@ -273,5 +275,36 @@ func TestCheckScope(t *testing.T) {
 	ok = CheckScope(client_scope, checked_scope)
 	if !ok {
 		t.Errorf("[CheckScope] Should be true.\nClient Scope: %+v\nChecked Scope: %s", client_scope, checked_scope)
+	}
+}
+
+type testByteJSONMarshal struct {
+	Byte json.RawMessage `json:"byte"`
+}
+
+type testByteJSONUnmarshal struct {
+	Byte []byte `json:"byte"`
+}
+
+func TestByteToRaw(t *testing.T) {
+	json_test := utils.NanoId()
+	data := []byte(json_test)
+	// [87 55 116 120 75 51 108 77 49 51 122 83 49 56 78 51 86 67 67 112 97 108 78 99 113 75 101 105 85 77 43 120 81 108 113 106 68 112 119 101 117 100 81 61]
+	a := testByteJSONMarshal{
+		Byte: ByteToRaw(data),
+	}
+	js, err := json.Marshal(a)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var b testByteJSONUnmarshal
+	err = json.Unmarshal(js, &b)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(b.Byte) != json_test {
+		t.Errorf("JSON not same")
 	}
 }
