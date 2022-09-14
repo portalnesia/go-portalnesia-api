@@ -16,6 +16,7 @@ func Initialization() {
 	if os.Getenv("NODE_ENV") == "production" {
 		models.SetupDebugDB()
 	}
+	config.ChangeDatabase(false)
 }
 
 func NewApp() *fiber.App {

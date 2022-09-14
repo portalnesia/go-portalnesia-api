@@ -23,7 +23,7 @@ const (
 	ErrorAuthorizationBlockClientId              = 161
 )
 
-func getMessage(err int) string {
+func getAuthorizationMessage(err int) string {
 	switch err {
 	case ErrorAuthorizationMissingClientId:
 		return "No `PN-Client-Id` provided"
@@ -72,7 +72,7 @@ func Authorization(http int, err int, msg ...*string) *Error {
 	if msg != nil && msg[0] != nil {
 		ms = *msg[0]
 	} else {
-		ms = getMessage(err)
+		ms = getAuthorizationMessage(err)
 	}
 	return NewError(http, err, "authorization", ms)
 }

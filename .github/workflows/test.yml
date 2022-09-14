@@ -38,6 +38,7 @@ jobs:
       DB_PREFIX: ${{secrets.DB_PREFIX}}
       DEBUG_KEY: $2a$08$j9jNyZvS.KFPHIMRAEE4k.ckWmeTMdv17E3QvftgbxEfAO0K94nDm
       DEBUG_USERID: 2
+      PORTALNESIA_CONTENT_ROOT: './tmp'
     steps:
       - uses: actions/checkout@v3
       - id: 'auth'

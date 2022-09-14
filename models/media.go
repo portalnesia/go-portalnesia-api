@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/url"
 	"regexp"
 	"time"
@@ -15,22 +16,23 @@ import (
 )
 
 type Media struct {
-	IDNumber      *uint64                `json:"id_number" gorm:"column:id;primaryKey"`
+	IDNumber      uint64                 `json:"id_number,omitempty" gorm:"column:id;primaryKey"`
 	ID            string                 `json:"id" gorm:"column:unik"`
 	Thumbnail     *string                `json:"thumbnail" gorm:"-"`
 	Path          *string                `json:"-"`
 	Sumber        *string                `json:"-"`
 	Thumbs        *string                `json:"-"`
-	Private       bool                   `json:"private" gorm:"-"`
+	Private       bool                   `json:"private" gorm:"column:private"`
+	Tampil        bool                   `json:"-" gorm:"column:tampil"`
 	UserID        uint64                 `json:"-" gorm:"column:userid"`
-	Downloadtoken *string                `json:"download_token" gorm:"-"`
+	Downloadtoken *string                `json:"download_token,omitempty" gorm:"-"`
 	Block         bool                   `json:"block" gorm:"column:block"`
 	Dilihat       int64                  `json:"-"`
 	Title         string                 `json:"title" gorm:"column:judul"`
 	Jenis         string                 `json:"-"`
 	Type          string                 `json:"type" gorm:"-"`
 	Tanggal       time.Time              `json:"-"`
-	Artist        *string                `json:"artist"`
+	Artist        *string                `json:"artist,omitempty"`
 	Size          uint64                 `json:"size"`
 	URL           string                 `json:"url" gorm:"-"`
 	Seen          utils.NumberFormatType `json:"seen" gorm:"-"`
@@ -149,7 +151,7 @@ func (m *Media) FormatPagination(c *Context) (err error) {
 			tipe = "twibbon"
 		}
 	}
-	if tipe != "" {
+	if tipe != "" && c.IsInternal {
 		tkn := util.DownloadToken(m.ID, tipe)
 		m.Downloadtoken = &tkn
 	}
@@ -172,4 +174,68 @@ func (m *Media) Format(c *Context) (err error) {
 		}
 	}
 	return
+}
+
+type UploadImageConfig struct {
+	File          *multipart.FileHeader
+	Context       *Context
+	Provider      string
+	Tampil        bool
+	Private       bool
+	Path          string
+	DynamicFolder bool
+}
+type UploadImageResult struct {
+	Path string
+}
+
+func UploadImage(c UploadImageConfig) (*Media, error) {
+	db := config.DB
+	unik := utils.NanoId()
+	filename := fmt.Sprintf("%s_%s", unik, utils.Slug(c.File.Filename))
+	date, _ := utils.NewGoment()
+
+	var filepath string
+
+	if c.DynamicFolder {
+		filepath = fmt.Sprintf("%s/%s/%s/%s", c.Path, date.Format("YYYY"), date.Format("MM"), filename)
+	} else {
+		filepath = fmt.Sprintf("%s/%s", c.Path, filename)
+	}
+
+	media := Media{
+		Title:   c.File.Filename,
+		UserID:  c.Context.User.ID,
+		Tanggal: date.ToTime(),
+		Jenis:   "foto",
+		ID:      unik,
+		Private: c.Private,
+		Tampil:  c.Tampil,
+		Block:   false,
+		Dilihat: 0,
+		Size:    uint64(c.File.Size),
+		User:    &c.Context.User.User,
+	}
+
+	if c.Provider == "imgur" {
+		// TODO: Upload to imgur
+		// path imgur.data.link
+		// thumbs imgur.data.deletehash
+		sumber := "imgur"
+		media.Sumber = &sumber
+		// Remove file
+	} else {
+		media.Path = &filepath
+		if c.Provider != "" {
+			media.Sumber = &c.Provider
+		}
+	}
+
+	err := db.Create(&media).Error
+	if err != nil {
+		media.AfterFind(db)
+		media.FormatPagination(c.Context)
+	}
+
+	return &media, err
 }

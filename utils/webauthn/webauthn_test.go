@@ -10,7 +10,6 @@ import (
 
 func TestBeginLogin(t *testing.T) {
 	app.Initialization()
-	config.ChangeDatabase(false)
 
 	db := config.DB
 	var user models.User
