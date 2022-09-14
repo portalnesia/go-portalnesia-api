@@ -13,5 +13,8 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+tmp/
 *.env
 *_test.txt
+*-credentials.json
+gha-creds-*.json

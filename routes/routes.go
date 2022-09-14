@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"portalnesia.com/api/middleware"
 	"portalnesia.com/api/response"
 )
 
@@ -27,7 +28,9 @@ func SetupRouters() *fiber.App {
 		AppName: "Portalnesia v1",
 	})
 
-	app.Use(recover.New())
+	app.Use(middleware.Database())
+
+	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	if os.Getenv("NODE_ENV") == "development" {
 		app.Use(logger.New())
@@ -39,6 +42,16 @@ func SetupRouters() *fiber.App {
 
 	app.Use(etag.New())
 
+	app.Use(requestid.New())
+
+	app.Use(middleware.Header())
+
+	app.Use(middleware.Authorization(middleware.AuthorizationConfig{Disable: true}))
+
+	if os.Getenv("NODE_ENV") != "test" {
+		app.Static("/", os.Getenv("NODEJS_PUBLIC_PATH"))
+	}
+
 	/*app.Use(limiter.New(limiter.Config{
 		Max:               900,
 		Expiration:        15 * time.Minute,
@@ -49,11 +62,11 @@ func SetupRouters() *fiber.App {
 		Title: "Portalnesia Metrics Page",
 	}))
 
-	app.Use(requestid.New())
-
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"error": false, "message": "API Uptime"})
 	})
+
+	app.Use(middleware.Authorization(middleware.AuthorizationConfig{}))
 
 	v1 := app.Group("/v1")
 

@@ -3,11 +3,14 @@ package response
 import (
 	"fmt"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/portalnesia/go-utils"
 )
 
-const ErrorNotfound int = 401
-const ErrorEndpointNotfound int = 402
+const (
+	ErrorNotfound         int = 401
+	ErrorEndpointNotfound int = 402
+)
 
 func NotFound(tipe string, id string, idName string) *Error {
 	if idName == "" {
@@ -16,7 +19,7 @@ func NotFound(tipe string, id string, idName string) *Error {
 
 	msg := fmt.Sprintf("%s with %s `%s` not found", utils.Ucwords(tipe), idName, id)
 
-	return NewError(404, ErrorNotfound, "notfound", msg)
+	return NewError(fiber.StatusNotFound, ErrorNotfound, "notfound", msg)
 }
 
 func MultipleNotFound(tipe string, id []string, idName []string) *Error {
@@ -32,9 +35,9 @@ func MultipleNotFound(tipe string, id []string, idName []string) *Error {
 
 	msg += " not found"
 
-	return NewError(404, ErrorNotfound, "notfound", msg)
+	return NewError(fiber.StatusNotFound, ErrorNotfound, "notfound", msg)
 }
 
 func EndpointNotFound() *Error {
-	return NewError(404, ErrorEndpointNotfound, "notfound", "Invalid endpoint")
+	return NewError(fiber.StatusNotFound, ErrorEndpointNotfound, "notfound", "Invalid endpoint")
 }
