@@ -11,10 +11,10 @@ var (
 	DBProd  *gorm.DB
 )
 
-func ChangeDatabase(debug bool) {
+/*func ChangeDatabase(debug bool) {
 	if debug && NODE_ENV != "production" {
 		DB = DBDebug
 	} else {
 		DB = DBProd
 	}
-}
+}*/

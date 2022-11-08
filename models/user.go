@@ -1,14 +1,12 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
-	"sync"
 	"time"
 
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
+	"net/url"
+
+	"github.com/gofiber/fiber/v2"
 	"portalnesia.com/api/config"
 )
 
@@ -24,132 +22,116 @@ type WebauthnKeys struct {
 	Device    string    `json:"device"`
 }
 
-type UserWebauthn struct {
-	// API KEY
-	ID           string         `json:"id"`
-	UserID       uint64         `json:"user_id"`
-	WebauthnKeys []WebauthnKeys `json:"webauthnkeys"`
+type TelegramJson struct {
+	ID        string    `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Username  string    `json:"username"`
+	AuthDate  time.Time `json:"auth_date"`
+	PhotoUrl  string    `json:"photo_url"`
+	Hash      string    `json:"hash"`
+}
+
+type InstagramToken struct {
+	Token string `json:"token"`
+	ID    string `json:"id"`
+}
+
+type TwitterToken struct {
+	OauthToken       string `json:"oauth_token"`
+	OauthTokenSecret string `json:"oauth_token_secret"`
+	ScreenName       string `json:"screen_name"`
+	UserID           uint   `json:"user_id"`
+}
+
+type UserPagination struct {
+	ID       uint64  `json:"id" gorm:"column:id;primaryKey;column:id"`
+	Name     *string `json:"name" gorm:"column:user_nama"`
+	Username string  `json:"username" gorm:"column:user_login"`
+	Verify   bool    `json:"verify" gorm:"column:verify"`
+	Picture  *string `json:"picture" gorm:"-"`
+}
+
+type BaseUser struct {
+	UserPagination
+	About        *string    `json:"about" gorm:"column:biodata;"`
+	Private      bool       `json:"private" gorm:"column:private"`
+	Suspend      bool       `json:"suspend"`
+	Paid         bool       `json:"paid" gorm:"column:paid"`
+	MediaPrivate bool       `json:"media_private" gorm:"column:media_private"`
+	Instagram    *string    `json:"instagram"`
+	Twitter      *string    `json:"twitter"`
+	Facebook     *string    `json:"facebook" gorm:"-"`
+	Telegram     *string    `json:"telegram" gorm:"-"`
+	Line         *string    `json:"line"`
+	Birthday     *time.Time `json:"birthday"`
+	Email        *string    `json:"-" gorm:"column:user_email"`
+}
+
+type UserDetail struct {
+	BaseUser
+	IsFollowing       bool   `json:"is_following"`
+	IsFollower        bool   `json:"is_follower"`
+	IsPendingFollower bool   `json:"is_pending_follower"`
+	FollowerCount     uint64 `json:"follower_count"`
+	FollowingCount    uint64 `json:"following_count"`
 }
 
 type User struct {
-	ID            uint64         `json:"id" gorm:"column:id;primaryKey;column:id"`
-	Name          string         `json:"name" gorm:"column:user_nama"`
-	Username      string         `json:"username" gorm:"column:user_login"`
-	Email         *string        `json:"email" gorm:"column:user_email"`
-	Gambar        *string        `json:"-" gorm:"column:gambar"`
-	Picture       *string        `json:"picture" gorm:"-"`
-	Private       bool           `json:"private" gorm:"column:private"`
-	MediaPrivate  bool           `json:"media_private" gorm:"column:media_private"`
-	Verify        bool           `json:"verify" gorm:"column:verify"`
-	Paid          bool           `json:"-" gorm:"column:paid"`
-	PaidExpired   string         `json:"-" gorm:"column:paid_expired"`
-	Webauthn_JSON datatypes.JSON `json:"-" gorm:"column:security_key"`
-	Webauthn      UserWebauthn   `json:"-" gorm:"-"`
+	BaseUser
+	Password           *string         `json:"-" gorm:"column:user_pass"`
+	Gender             *uint           `json:"-"`
+	CountryTelephone   *string         `json:"-"`
+	FullTelp           *string         `json:"-"`
+	FirebaseUid        *string         `json:"-"`
+	LineId             *string         `json:"-"`
+	Google             *string         `json:"-"`
+	GoogleEmail        *string         `json:"-"`
+	TelegramJson       *TelegramJson   `json:"-"`
+	TelegramID         *string         `json:"-"`
+	IgToken            *InstagramToken `json:"-"`
+	Instagram          *string         `json:"-"`
+	Gambar             *string         `json:"-" gorm:"column:gambar"`
+	UserActivationKey  *string         `json:"-" gorm:"column:user_activation_key;"`
+	Active             bool            `json:"-"`
+	Block              bool            `json:"-"`
+	CreatedAt          time.Time       `json:"-" gorm:"column:registrasi;"`
+	Remove             bool            `json:"-"`
+	RemoveDate         *time.Time      `json:"-"`
+	TwitterToken       *TwitterToken   `json:"-"`
+	FAEnable           bool            `json:"-" gorm:"column:fa_enable;"`
+	FA                 *string         `json:"-" gorm:"column:FA;"`
+	Webauthn           *WebauthnKeys   `json:"-" gorm:"column:security_key"`
+	NewEmail           *string         `json:"-"`
+	LastChangeUsername *time.Time      `json:"-"`
+	PaidExpired        string          `json:"-" gorm:"column:paid_expired"`
+	PrKey              *string         `json:"-"`
+	PubKey             *string         `json:"-"`
 }
 
-func (user *User) AfterFind(tx *gorm.DB) (err error) {
-	if user.Gambar != nil {
-		pic := fmt.Sprintf("https://content.portalnesia.com/img/content?image=%s", url.QueryEscape(*user.Gambar))
-		user.Picture = &pic
+func (u *User) ToPagination(c *Context) UserPagination {
+	if u.Gambar != nil {
+		pic := fmt.Sprintf("https://content.portalnesia.com/img/content?image=%s", url.QueryEscape(*u.Gambar))
+		u.Picture = &pic
 	}
-	json.Unmarshal([]byte(user.Webauthn_JSON.String()), &user.Webauthn)
-	return
+	return UserPagination{
+		ID:       u.ID,
+		Name:     u.Name,
+		Username: u.Username,
+		Picture:  u.Picture,
+		Verify:   u.Verify,
+	}
+}
+
+func (u *User) ToAPI(c *Context) {
+	// pagination := u.ToPagination(c)
+
 }
 
 func (User) TableName() string {
 	return fmt.Sprintf("%susers", config.Prefix)
 }
 
-func (User) TableFollowName() string {
-	return fmt.Sprintf("%sfollow", config.Prefix)
-}
+func (User) FindPagination(c *fiber.Ctx) {
 
-type UserInternal struct {
-	User
-	SessionId *string `json:"session_id" gorm:"-"`
-}
-
-func (user *UserInternal) AfterFind(tx *gorm.DB) (err error) {
-	user.User.AfterFind(tx)
-
-	return
-}
-
-func (UserInternal) TableName() string {
-	return fmt.Sprintf("%susers", config.Prefix)
-}
-
-type UserDetail struct {
-	User
-	IsFollowing     bool `json:"isFollowing" gorm:"-"`
-	IsFollower      bool `json:"isFollower" gorm:"-"`
-	IsFollowPending bool `json:"isFollowPending" gorm:"-"`
-}
-
-func (user *UserDetail) AfterFind(g *gorm.DB) (err error) {
-	user.User.AfterFind(g)
-	return
-}
-
-func (UserDetail) TableName() string {
-	return fmt.Sprintf("%susers", config.Prefix)
-}
-
-type UserUsername struct {
-	ID       uint64 `json:"id" gorm:"primary_key;column:id"`
-	Username string `json:"username" gorm:"column:user_login"`
-}
-
-func (UserUsername) TableName() string {
-	return fmt.Sprintf("%susers", config.Prefix)
-}
-
-func (u *UserDetail) Format(c *UserContext) {
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	pending, follower, following := make(chan bool), make(chan bool), make(chan bool)
-
-	go func() {
-		defer wg.Done()
-		defer close(pending)
-
-		pending <- u.CheckIsFollowPendings(c)
-	}()
-	go func() {
-		defer wg.Done()
-		defer close(follower)
-
-		follower <- u.CheckIsFollowers(c)
-	}()
-	go func() {
-		defer wg.Done()
-		defer close(following)
-
-		following <- u.CheckIsFollowings(c)
-	}()
-
-	u.IsFollowPending = <-pending
-	u.IsFollower = <-follower
-	u.IsFollowing = <-following
-	wg.Wait()
-}
-
-func (u *UserDetail) CheckIsFollowings(user *UserContext) bool {
-	var exists bool
-	db := config.DB
-	db.Table(u.TableFollowName()).Select("count(*) > 0").Where("difollow = ? AND yangfollow = ?", u.ID, user.ID).Session(&gorm.Session{}).Find(&exists)
-
-	return exists
-}
-func (u *UserDetail) CheckIsFollowers(user *UserContext) bool {
-	exists := false
-	db := config.DB
-	db.Table(u.TableFollowName()).Select("count(*) > 0").Where("difollow = ? AND yangfollow = ? AND pending='0'", user.ID, u.ID).Session(&gorm.Session{}).Find(&exists)
-	return exists
-}
-func (u *UserDetail) CheckIsFollowPendings(user *UserContext) bool {
-	exists := false
-	db := config.DB
-	db.Table(u.TableFollowName()).Select("count(*) > 0").Where("difollow = ? AND yangfollow = ? AND pending='1'", u.ID, user.ID).Session(&gorm.Session{}).Find(&exists)
-	return exists
 }

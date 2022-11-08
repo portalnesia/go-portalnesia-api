@@ -224,7 +224,6 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 			if xDebug != "" {
 				verify := util.VerifyToken[AuthInternal](pnInternalPortalnesia, os.Getenv("AUTH_DEBUG_SECRET"), int64(time.Hour)*1)
 				if verify.Verified {
-					config.ChangeDatabase(true)
 					if verify.Data.UserId != nil && verify.Data.SessionId != nil {
 						var user models.UserContext
 						sel := fmt.Sprintf("%s.*, %s.sess_id as session_id, %s.sess_time as session_timestamp, %s.id as session_id_number", tblUser, tblSess, tblSess, tblSess)
@@ -269,9 +268,6 @@ func Authorization(options AuthorizationConfig) func(*fiber.Ctx) error {
 			}
 		}
 
-		if ctx.IsDebug {
-			config.ChangeDatabase(true)
-		}
 		c.Locals("ctx", ctx)
 		return c.Next()
 	}
